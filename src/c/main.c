@@ -33,8 +33,8 @@ static ClaySettings settings;
   #define INFO_Y           119
   #define DAY_X            37
   #define DATE_X           (int[]){191, 207}
-  #define AM_RECT          GRect(143, 217, 21, 11)
-  #define PM_RECT          GRect(143, 217, 21, 11)
+  #define AM_RECT          GRect(143, 223, 21, 11)
+  #define PM_RECT          GRect(143, 223, 21, 11)
   #define DISC_RECT        GRect(129, 256, 4, 3)
   #define SCREEN_W         260
 #elif defined(PBL_PLATFORM_CHALK)
@@ -46,8 +46,8 @@ static ClaySettings settings;
   #define INFO_Y           82
   #define DAY_X            32
   #define DATE_X           (int[]){124, 136}
-  #define AM_RECT          GRect(101, 151, 15, 8)
-  #define PM_RECT          GRect(101, 151, 15, 8)
+  #define AM_RECT          GRect(101, 153, 15, 8)
+  #define PM_RECT          GRect(101, 153, 15, 8)
   #define DISC_RECT        GRect(89, 176, 4, 3)
   #define SCREEN_W         180
 #elif defined(PBL_PLATFORM_EMERY)
@@ -73,8 +73,8 @@ static ClaySettings settings;
   #define INFO_Y           137
   #define DAY_X            3
   #define DATE_X           (int[]){117, 130}
-  #define AM_RECT          GRect(115, 131, 15, 8)
-  #define PM_RECT          GRect(115, 131, 15, 8)
+  #define AM_RECT          GRect(74, 157, 15, 8)
+  #define PM_RECT          GRect(90, 157, 15, 8)
   #define DISC_RECT        GRect(70, 163, 4, 3)
   #define BATT_Y           167
   #define SCREEN_W         144
@@ -153,16 +153,16 @@ static void draw_digital_info(GContext *ctx, struct tm *t) {
 #if defined(PBL_ROUND)
   if (settings.ShowDigitalTime) {
     int dw = (SCREEN_W == 260) ? 15 : 11, dh = (SCREEN_W == 260) ? 19 : 14;
-    int cur_hr = hr;
+    int display_hr = hr;
     if (!clock_is_24h_style()) {
-      if (cur_hr < 12) graphics_draw_bitmap_in_rect(ctx, s_am_img, AM_RECT);
+      if (display_hr < 12) graphics_draw_bitmap_in_rect(ctx, s_am_img, AM_RECT);
       else graphics_draw_bitmap_in_rect(ctx, s_pm_img, PM_RECT);
-      cur_hr = cur_hr % 12; if (cur_hr == 0) cur_hr = 12;
-      if (cur_hr >= 10) graphics_draw_bitmap_in_rect(ctx, s_digit_s[cur_hr / 10], GRect(DIGIT_X[0], DIGIT_Y, dw, dh));
+      display_hr = display_hr % 12; if (display_hr == 0) display_hr = 12;
+      if (display_hr >= 10) graphics_draw_bitmap_in_rect(ctx, s_digit_s[display_hr / 10], GRect(DIGIT_X[0], DIGIT_Y, dw, dh));
     } else {
-      graphics_draw_bitmap_in_rect(ctx, s_digit_s[cur_hr / 10], GRect(DIGIT_X[0], DIGIT_Y, dw, dh));
+      graphics_draw_bitmap_in_rect(ctx, s_digit_s[display_hr / 10], GRect(DIGIT_X[0], DIGIT_Y, dw, dh));
     }
-    graphics_draw_bitmap_in_rect(ctx, s_digit_s[cur_hr % 10], GRect(DIGIT_X[1], DIGIT_Y, dw, dh));
+    graphics_draw_bitmap_in_rect(ctx, s_digit_s[display_hr % 10], GRect(DIGIT_X[1], DIGIT_Y, dw, dh));
     if (SCREEN_W == 260) graphics_draw_bitmap_in_rect(ctx, s_colon_img, GRect(130, 208, 3, 7));
     else graphics_draw_bitmap_in_rect(ctx, s_colon_img, GRect(89, 141, 3, 7));
     graphics_draw_bitmap_in_rect(ctx, s_digit_s[mn / 10], GRect(DIGIT_X[2], DIGIT_Y, dw, dh));
@@ -179,17 +179,46 @@ static void draw_digital_info(GContext *ctx, struct tm *t) {
   }
 #else
   if (settings.ShowDigitalTime) {
-    int cur_hr = hr;
+    int display_hr = hr;
     int time_w = (SCREEN_W == 200) ? 21 : 16, time_h = (SCREEN_W == 200) ? 35 : 25;
-    if (!clock_is_24h_style()) {
-      if (cur_hr < 12) graphics_draw_bitmap_in_rect(ctx, s_am_img, AM_RECT);
-      else graphics_draw_bitmap_in_rect(ctx, s_pm_img, PM_RECT);
-      cur_hr = cur_hr % 12; if (cur_hr == 0) cur_hr = 12;
-      if (cur_hr >= 10) graphics_draw_bitmap_in_rect(ctx, s_digit_l[cur_hr / 10], GRect(DIGIT_X[0], DIGIT_Y, time_w, time_h));
+    graphics_context_set_fill_color(ctx, GColorBlack);
+    
+    if (clock_is_24h_style()) {
+      // 24時間制：AM/PM領域をまとめて隠す
+#if defined(PBL_PLATFORM_EMERY)
+      graphics_fill_rect(ctx, GRect(104, 214, 44, 11), 0, GCornerNone);
+#else
+      graphics_fill_rect(ctx, GRect(74, 157, 31, 8), 0, GCornerNone);
+#endif
+      graphics_draw_bitmap_in_rect(ctx, s_digit_l[display_hr / 10], GRect(DIGIT_X[0], DIGIT_Y, time_w, time_h));
     } else {
-      graphics_draw_bitmap_in_rect(ctx, s_digit_l[cur_hr / 10], GRect(DIGIT_X[0], DIGIT_Y, time_w, time_h));
+      // 12時間制
+      if (display_hr < 12) {
+        graphics_draw_bitmap_in_rect(ctx, s_am_img, AM_RECT);
+        // PM部分を隠す
+#if defined(PBL_PLATFORM_EMERY)
+        graphics_fill_rect(ctx, GRect(127, 214, 21, 11), 0, GCornerNone);
+#else
+        graphics_fill_rect(ctx, GRect(90, 157, 15, 8), 0, GCornerNone);
+#endif
+      } else {
+        graphics_draw_bitmap_in_rect(ctx, s_pm_img, PM_RECT);
+        // AM部分を隠す
+#if defined(PBL_PLATFORM_EMERY)
+        graphics_fill_rect(ctx, GRect(104, 214, 21, 11), 0, GCornerNone);
+#else
+        graphics_fill_rect(ctx, GRect(74, 157, 15, 8), 0, GCornerNone);
+#endif
+      }
+      display_hr = display_hr % 12; if (display_hr == 0) display_hr = 12;
+      
+      if (display_hr >= 10) {
+        graphics_draw_bitmap_in_rect(ctx, s_digit_l[display_hr / 10], GRect(DIGIT_X[0], DIGIT_Y, time_w, time_h));
+      } else {
+        graphics_fill_rect(ctx, GRect(DIGIT_X[0], DIGIT_Y, time_w, time_h), 0, GCornerNone);
+      }
     }
-    graphics_draw_bitmap_in_rect(ctx, s_digit_l[cur_hr % 10], GRect(DIGIT_X[1], DIGIT_Y, time_w, time_h));
+    graphics_draw_bitmap_in_rect(ctx, s_digit_l[display_hr % 10], GRect(DIGIT_X[1], DIGIT_Y, time_w, time_h));
     graphics_draw_bitmap_in_rect(ctx, s_digit_l[mn / 10], GRect(DIGIT_X[2], DIGIT_Y, time_w, time_h));
     graphics_draw_bitmap_in_rect(ctx, s_digit_l[mn % 10], GRect(DIGIT_X[3], DIGIT_Y, time_w, time_h));
   }
@@ -276,7 +305,6 @@ static void main_window_load(Window *window) {
   s_am_img = gbitmap_create_with_resource(RESOURCE_ID_AM); s_pm_img = gbitmap_create_with_resource(RESOURCE_ID_PM);
   s_disc_img = gbitmap_create_with_resource(RESOURCE_ID_DISC); s_colon_img = gbitmap_create_with_resource(RESOURCE_ID_COLON);
   
-  // 数字リソース（大）の個別読み込み
   s_digit_l[0] = gbitmap_create_with_resource(RESOURCE_ID_L0);
   s_digit_l[1] = gbitmap_create_with_resource(RESOURCE_ID_L1);
   s_digit_l[2] = gbitmap_create_with_resource(RESOURCE_ID_L2);
@@ -288,7 +316,6 @@ static void main_window_load(Window *window) {
   s_digit_l[8] = gbitmap_create_with_resource(RESOURCE_ID_L8);
   s_digit_l[9] = gbitmap_create_with_resource(RESOURCE_ID_L9);
 
-  // 数字リソース（小）の個別読み込み
   s_digit_s[0] = gbitmap_create_with_resource(RESOURCE_ID_S0);
   s_digit_s[1] = gbitmap_create_with_resource(RESOURCE_ID_S1);
   s_digit_s[2] = gbitmap_create_with_resource(RESOURCE_ID_S2);
@@ -300,7 +327,6 @@ static void main_window_load(Window *window) {
   s_digit_s[8] = gbitmap_create_with_resource(RESOURCE_ID_S8);
   s_digit_s[9] = gbitmap_create_with_resource(RESOURCE_ID_S9);
 
-  // 曜日リソースの読み込み
   s_day_imgs[0] = gbitmap_create_with_resource(RESOURCE_ID_D0);
   s_day_imgs[1] = gbitmap_create_with_resource(RESOURCE_ID_D1);
   s_day_imgs[2] = gbitmap_create_with_resource(RESOURCE_ID_D2);

@@ -8,7 +8,23 @@ function buildConfig(platform) {
   var isRound = ['chalk', 'gabbro'].indexOf(platform) !== -1;
 
   var config = [
-    { "type": "heading", "defaultValue": "Watchface Settings" }
+    { "type": "heading", "defaultValue": "Watchface Settings" },
+    {
+      "type": "section",
+      "items": [
+        { "type": "heading", "defaultValue": "Animation" },
+        {
+          "type": "slider",
+          "messageKey": "AnimDuration",
+          "defaultValue": 2,
+          "label": "Overshoot Duration",
+          "description": "0: Off, 1: 40ms ... 5: 200ms",
+          "min": 0,
+          "max": 5,
+          "step": 1
+        }
+      ]
+    }
   ];
 
   if (isColor) {
@@ -20,19 +36,9 @@ function buildConfig(platform) {
           "type": "color",
           "messageKey": "BackgroundColor",
           "defaultValue": "0xFFFFFF",
-          "label": "Gauge Color (Time/Time2) / Face Color (Round/Round2)",
+          "label": "Background Color",
           "sunlight": true
         }
-      ]
-    });
-  }
-
-  if (isMono) {
-    config.push({
-      "type": "section",
-      "items": [
-        { "type": "heading", "defaultValue": "Monochrome Settings" },
-        { "type": "text", "defaultValue": "Settings are limited for this device." }
       ]
     });
   }
@@ -57,11 +63,11 @@ function buildConfig(platform) {
 Pebble.addEventListener('showConfiguration', function() {
   var watch = Pebble.getActiveWatchInfo ? Pebble.getActiveWatchInfo() : null;
   var platform = (watch && watch.platform) ? watch.platform.toLowerCase() : 'basalt';
-  var isColorPlatform = ['basalt', 'chalk', 'emery', 'gabbro'].indexOf(platform) !== -1;
+  var isColor = ['basalt', 'chalk', 'emery', 'gabbro'].indexOf(platform) !== -1;
 
   clay = new Clay(buildConfig(platform), null, { autoHandleEvents: false });
 
-  if (isColorPlatform) {
+  if (isColor) {
     try {
       if (!clay.meta) { clay.meta = {}; }
       if (!clay.meta.activeWatchInfo) { clay.meta.activeWatchInfo = watch || {}; }
@@ -71,8 +77,8 @@ Pebble.addEventListener('showConfiguration', function() {
       if (clay.meta.activeWatchInfo.capabilities.indexOf('COLOR') === -1) {
         clay.meta.activeWatchInfo.capabilities.push('COLOR');
       }
-    } catch(e) {
-      console.log('[clay.meta error] ' + e);
+    } catch (e) {
+      console.log('Capabilities injection error: ' + e);
     }
   }
 

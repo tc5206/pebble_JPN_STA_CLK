@@ -20,6 +20,7 @@ typedef struct {
   bool ShowDigitalTime;
   bool ShowDigitalDate;
   bool ShowDigitalDay;
+  uint8_t AnimDuration;
 } __attribute__((__packed__)) ClaySettings;
 
 static ClaySettings settings;
@@ -99,6 +100,7 @@ static void prv_default_settings() {
   settings.ShowDigitalTime = true;
   settings.ShowDigitalDate = true;
   settings.ShowDigitalDay = true;
+  settings.AnimDuration = 1;
 }
 
 static void prv_save_settings() {
@@ -120,6 +122,8 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   if (show_date_t) settings.ShowDigitalDate = show_date_t->value->int8;
   Tuple *show_day_t = dict_find(iter, MESSAGE_KEY_ShowDigitalDay);
   if (show_day_t) settings.ShowDigitalDay = show_day_t->value->int8;
+  Tuple *anim_t = dict_find(iter, MESSAGE_KEY_AnimDuration);
+  if (anim_t) settings.AnimDuration = (uint8_t)anim_t->value->int8;
   prv_save_settings();
 }
 
@@ -184,7 +188,6 @@ static void draw_digital_info(GContext *ctx, struct tm *t) {
     graphics_context_set_fill_color(ctx, GColorBlack);
     
     if (clock_is_24h_style()) {
-      // 24時間制：AM/PM領域をまとめて隠す
 #if defined(PBL_PLATFORM_EMERY)
       graphics_fill_rect(ctx, GRect(104, 214, 44, 11), 0, GCornerNone);
 #else
@@ -192,10 +195,8 @@ static void draw_digital_info(GContext *ctx, struct tm *t) {
 #endif
       graphics_draw_bitmap_in_rect(ctx, s_digit_l[display_hr / 10], GRect(DIGIT_X[0], DIGIT_Y, time_w, time_h));
     } else {
-      // 12時間制
       if (display_hr < 12) {
         graphics_draw_bitmap_in_rect(ctx, s_am_img, AM_RECT);
-        // PM部分を隠す
 #if defined(PBL_PLATFORM_EMERY)
         graphics_fill_rect(ctx, GRect(127, 214, 21, 11), 0, GCornerNone);
 #else
@@ -203,7 +204,6 @@ static void draw_digital_info(GContext *ctx, struct tm *t) {
 #endif
       } else {
         graphics_draw_bitmap_in_rect(ctx, s_pm_img, PM_RECT);
-        // AM部分を隠す
 #if defined(PBL_PLATFORM_EMERY)
         graphics_fill_rect(ctx, GRect(104, 214, 21, 11), 0, GCornerNone);
 #else
@@ -278,13 +278,23 @@ static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
   if (tick_time->tm_sec == 0 || tick_time->tm_sec == 30) {
     int32_t ang = (TRIG_MAX_ANGLE * tick_time->tm_min / 60) + (tick_time->tm_sec == 30 ? TRIG_MAX_ANGLE / 120 : 0);
     s_target_minute_angle = ang; 
-    s_anim_minute_angle = ang + (TRIG_MAX_ANGLE / 270);
-    if (tick_time->tm_sec == 0) {
-      s_is_animating = true;
-      layer_mark_dirty(s_info_layer);
+
+    if (settings.AnimDuration > 0) {
+      s_anim_minute_angle = ang + (TRIG_MAX_ANGLE / 270);
+      if (tick_time->tm_sec == 0) {
+        s_is_animating = true;
+        layer_mark_dirty(s_info_layer);
+      }
+      layer_mark_dirty(s_hands_layer); 
+      app_timer_register(settings.AnimDuration * 40, timer_callback, NULL);
+    } else {
+      s_anim_minute_angle = ang;
+      s_is_animating = false;
+      layer_mark_dirty(s_hands_layer);
+      if (tick_time->tm_sec == 0) {
+        layer_mark_dirty(s_info_layer);
+      }
     }
-    layer_mark_dirty(s_hands_layer); 
-    app_timer_register(80, timer_callback, NULL);
   }
 }
 
